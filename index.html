@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f7f7f8" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0b0d10" media="(prefers-color-scheme: dark)" />
+  <meta name="description" content="Calculate when a medication supply runs out." />
+
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Pharmacy Date" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png" />
+
+  <title>Pharmacy Date Calculator</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <h1 class="app-title">Pharmacy Date Calculator</h1>
+      <div class="header-controls">
+        <label class="theme-select">
+          <span class="sr-only">Theme</span>
+          <select id="themeSelect" aria-label="Theme">
+            <option value="auto">Auto</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <div id="updateBanner" class="update-banner" hidden>
+      <button type="button" id="updateBtn">Update available. Tap to refresh.</button>
+    </div>
+  </header>
+
+  <main id="main" class="container">
+    <!-- Result overlay -->
+    <div id="resultOverlay" class="result-overlay" hidden aria-hidden="true">
+      <div class="result-backdrop" data-close-result></div>
+      <section id="resultCard" class="result-card" role="dialog" aria-modal="false" aria-labelledby="resultTitle" aria-live="polite" tabindex="-1">
+        <div class="result-header">
+          <h2 id="resultTitle" class="result-title">Result</h2>
+          <button type="button" class="result-close" data-close-result aria-label="Close result">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div id="resultWeekday" class="result-weekday"></div>
+        <div id="resultDate" class="result-date"></div>
+        <div id="resultProof" class="result-proof"></div>
+        <div id="resultNote" class="result-note" hidden></div>
+      </section>
+    </div>
+
+    <!-- Form -->
+    <form id="calcForm" class="calc-form" novalidate>
+      <!-- Start date -->
+      <div class="field">
+        <label for="startDate" class="field-label">Start date</label>
+        <div class="date-row">
+          <input type="date" id="startDate" name="startDate" class="date-input" required />
+          <button type="button" id="todayBtn" class="btn-secondary">Today</button>
+        </div>
+        <div class="field-row-sub">
+          <span id="startWeekday" class="field-meta"></span>
+          <label class="toggle-inline">
+            <input type="checkbox" id="countStartCheck" />
+            <span>Count start day as day 1</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Quantity -->
+      <div class="field">
+        <label class="field-label">Quantity</label>
+        <div class="qty-row">
+          <div class="qty-field">
+            <label for="containers" class="sr-only">Containers</label>
+            <input
+              type="number" id="containers" name="containers"
+              inputmode="numeric" min="1" max="9999" step="1" value="1"
+              aria-label="Number of containers" required
+            />
+            <span class="qty-sub">containers</span>
+          </div>
+          <span class="times-sign" aria-hidden="true">&times;</span>
+          <div class="qty-field">
+            <label for="perContainer" class="sr-only">Tablets per container</label>
+            <input
+              type="number" id="perContainer" name="perContainer"
+              inputmode="numeric" min="1" max="9999" step="1" value="30"
+              aria-label="Tablets per container" required
+            />
+            <span class="qty-sub">tablets each</span>
+          </div>
+        </div>
+        <div class="chip-row" role="group" aria-label="Quick-pick tablets per container">
+          <button type="button" class="chip" data-per-container="30">30</button>
+          <button type="button" class="chip" data-per-container="60">60</button>
+          <button type="button" class="chip" data-per-container="90">90</button>
+        </div>
+      </div>
+
+      <button type="submit" id="calcBtn" class="btn-primary">Calculate</button>
+
+      <div id="errorArea" class="error-msg" role="alert" hidden></div>
+    </form>
+
+    <!-- Advanced -->
+    <section class="advanced">
+      <button type="button" id="advancedToggle" class="advanced-toggle" aria-expanded="false" aria-controls="advancedPanel">
+        <span id="advancedToggleLabel">Advanced options</span>
+        <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </button>
+
+      <div id="advancedPanel" class="advanced-panel" hidden>
+        <div class="advanced-body">
+          <!-- Operation -->
+          <fieldset class="field">
+            <legend class="field-label">Operation</legend>
+            <div class="segmented" role="radiogroup">
+              <label class="seg">
+                <input type="radio" name="operation" value="add" checked />
+                <span>Add</span>
+              </label>
+              <label class="seg">
+                <input type="radio" name="operation" value="subtract" />
+                <span>Subtract</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <!-- Unit -->
+          <fieldset class="field">
+            <legend class="field-label">Unit</legend>
+            <div class="segmented" role="radiogroup">
+              <label class="seg">
+                <input type="radio" name="unit" value="days" checked />
+                <span>Days</span>
+              </label>
+              <label class="seg">
+                <input type="radio" name="unit" value="months" />
+                <span>Calendar months</span>
+              </label>
+            </div>
+            <p class="field-hint" id="unitHint">Counts one day at a time, including leap days.</p>
+          </fieldset>
+
+          <!-- Tablets per day -->
+          <div class="field">
+            <label for="tabletsPerDay" class="field-label">Tablets per day</label>
+            <input
+              type="number" id="tabletsPerDay"
+              inputmode="numeric" min="1" max="24" step="1" value="1"
+            />
+            <p class="field-hint">Days supply = total tablets &divide; tablets per day. Rounds down when not exact.</p>
+          </div>
+
+          <!-- Display -->
+          <fieldset class="field">
+            <legend class="field-label">Display</legend>
+            <label class="toggle-inline">
+              <input type="checkbox" id="hideProofCheck" />
+              <span>Hide calculation details</span>
+            </label>
+          </fieldset>
+        </div>
+      </div>
+    </section>
+
+    <!-- History -->
+    <section id="historySection" class="history" hidden>
+      <div class="history-header">
+        <h2 class="history-title">Recent</h2>
+        <button type="button" id="clearHistoryBtn" class="btn-text">Clear</button>
+      </div>
+      <ul id="historyList" class="history-list"></ul>
+    </section>
+
+    <footer class="app-footer">
+      <span>v<span id="versionTag"></span></span>
+      <span class="footer-sep" aria-hidden="true">&middot;</span>
+      <span>Works offline. No data leaves your device.</span>
+    </footer>
+  </main>
+
+  <script src="dateMath.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
